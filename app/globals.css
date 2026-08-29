@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 body {
-  background: #1a0a0a;
+  background: #fdf6f6;
   color: #ffffff;
   /* Poppins for Latin/numbers, Noto Sans Khmer as fallback for Khmer script */
   font-family: var(--font-poppins), var(--font-khmer), sans-serif;
