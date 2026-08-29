@@ -18,7 +18,7 @@ const notoSansKhmer = Noto_Sans_Khmer({
 
 export const metadata: Metadata = {
   title: "Julian & Vivian - Wedding Invitation",
-  description: "Elegant wedding invitation with minimalism dark red theme",
+  description: "Elegant wedding invitation with minimalism blue theme",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

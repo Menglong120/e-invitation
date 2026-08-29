@@ -11,6 +11,6 @@ body {
 }
 
 /* Khmer text utility — apply wherever pure Khmer content appears */
-.font-khmer {
+@utility font-khmer {
   font-family: var(--font-khmer), var(--font-poppins), sans-serif;
 }
