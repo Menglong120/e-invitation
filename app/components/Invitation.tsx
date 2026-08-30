@@ -20,8 +20,8 @@ const C = {
 };
 
 const GALLERY_IMAGES = [
-  { src: '/images/2.jpg',           alt: 'Von Nak & Barn Ravan – 1' },
   { src: '/images/3.jpg',           alt: 'Von Nak & Barn Ravan – 2' },
+  { src: '/images/2.jpg',           alt: 'Von Nak & Barn Ravan – 1' },
   { src: '/images/4.jpg', alt: 'Von Nak & Barn Ravan – 3' },
   { src: '/images/5.jpg', alt: 'Von Nak & Barn Ravan – 4' },
   { src: '/images/6.jpg', alt: 'Von Nak & Barn Ravan – 5' },
