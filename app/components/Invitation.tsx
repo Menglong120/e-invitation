@@ -1,32 +1,197 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 
 const FLOWER = '/images/flower1.png';
 
 // ── Colour tokens ──────────────────────────────────────────────
 const C = {
-  primary:      '#e3c1c2',   // dusty rose — main accent
-  primaryDark:  '#c49a9b',   // deeper rose — hover / borders
-  primaryDeep:  '#a07070',   // richest rose — card bg, buttons
-  bg:           '#fdf6f6',   // near-white warm background
-  cardBg:       '#fdf6f6',   // landing card background
-  textOnPrimary:'#fff',      // text on dark-rose cards
-  textLabel:    '#9b6b6c',   // muted rose — section labels, sub-text
-  textDark:     '#5a2d2e',   // dark rose — headings
-  divider:      '#d4a8a9',   // soft divider line
-  gold:         '#c8960c',   // kept for wax seal / ornament
+  primary:       '#e3c1c2',
+  primaryDark:   '#c49a9b',
+  primaryDeep:   '#a07070',
+  bg:            '#fdf6f6',
+  cardBg:        '#fdf6f6',
+  textOnPrimary: '#fff',
+  textLabel:     '#9b6b6c',
+  textDark:      '#5a2d2e',
+  divider:       '#d4a8a9',
+  gold:          '#c8960c',
 };
 
 const GALLERY_IMAGES = [
-  { src: '/images/couple-photo.jpeg', alt: 'Von Nak & Barn Ravan – 1' },
-  { src: '/images/couple-photo.jpeg', alt: 'Von Nak & Barn Ravan – 2' },
-  { src: '/images/couple-photo.jpeg', alt: 'Von Nak & Barn Ravan – 3' },
-  { src: '/images/couple-photo.jpeg', alt: 'Von Nak & Barn Ravan – 4' },
-  { src: '/images/couple-photo.jpeg', alt: 'Von Nak & Barn Ravan – 5' },
+  { src: '/images/2.jpg',           alt: 'Von Nak & Barn Ravan – 1' },
+  { src: '/images/3.jpg',           alt: 'Von Nak & Barn Ravan – 2' },
+  { src: '/images/4.jpg', alt: 'Von Nak & Barn Ravan – 3' },
+  { src: '/images/5.jpg', alt: 'Von Nak & Barn Ravan – 4' },
+  { src: '/images/6.jpg', alt: 'Von Nak & Barn Ravan – 5' },
+  { src: '/images/7.jpg', alt: 'Von Nak & Barn Ravan – 5' },
 ];
 
+// ── Lightbox ───────────────────────────────────────────────────
+function Lightbox({
+  images,
+  startIndex,
+  onClose,
+}: {
+  images: { src: string; alt: string }[];
+  startIndex: number;
+  onClose: () => void;
+}) {
+  const [idx, setIdx] = useState(startIndex);
+  const total = images.length;
+  const prev = useCallback(() => setIdx(i => (i - 1 + total) % total), [total]);
+  const next = useCallback(() => setIdx(i => (i + 1) % total), [total]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'ArrowLeft')  prev();
+      if (e.key === 'ArrowRight') next();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onClose, prev, next]);
+
+  // Prevent body scroll while open
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, []);
+
+  // Touch/swipe support
+  const touchStartX = useRef<number | null>(null);
+  const onTouchStart = (e: React.TouchEvent) => { touchStartX.current = e.touches[0].clientX; };
+  const onTouchEnd   = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    if (Math.abs(dx) > 50) { dx < 0 ? next() : prev(); }
+    touchStartX.current = null;
+  };
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Image lightbox"
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 999,
+        background: 'rgba(20,8,8,0.92)',
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        backdropFilter: 'blur(6px)',
+        animation: 'lbFadeIn 0.2s ease',
+      }}
+      onClick={onClose}
+    >
+      {/* Close button */}
+      <button
+        onClick={onClose}
+        aria-label="Close"
+        style={{
+          position: 'absolute', top: 18, right: 18,
+          width: 40, height: 40, borderRadius: '50%',
+          background: 'rgba(255,255,255,0.12)',
+          border: '1px solid rgba(255,255,255,0.2)',
+          color: '#fff', fontSize: 20, cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 10,
+        }}
+      >✕</button>
+
+      {/* Counter */}
+      {total > 1 && (
+        <p style={{
+          position: 'absolute', top: 22, left: '50%', transform: 'translateX(-50%)',
+          color: 'rgba(255,255,255,0.6)', fontSize: 13, letterSpacing: '0.1em',
+        }}>
+          {idx + 1} / {total}
+        </p>
+      )}
+
+      {/* Image */}
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          position: 'relative',
+          width: 'min(92vw, 600px)',
+          height: 'min(80vh, 700px)',
+          borderRadius: 12,
+          overflow: 'hidden',
+          boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
+        }}
+      >
+        <Image
+          key={idx}
+          src={images[idx].src}
+          alt={images[idx].alt}
+          fill
+          className="object-contain"
+          sizes="min(92vw, 600px)"
+          priority
+          style={{ animation: 'lbImgIn 0.25s ease' }}
+        />
+      </div>
+
+      {/* Alt text */}
+      <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, marginTop: 12, letterSpacing: '0.05em' }}>
+        {images[idx].alt}
+      </p>
+
+      {/* Prev / Next arrows */}
+      {total > 1 && (
+        <>
+          <button
+            onClick={e => { e.stopPropagation(); prev(); }}
+            aria-label="Previous image"
+            style={{
+              position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
+              width: 44, height: 44, borderRadius: '50%',
+              background: 'rgba(255,255,255,0.1)',
+              border: '1px solid rgba(255,255,255,0.2)',
+              color: '#fff', fontSize: 22, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >‹</button>
+          <button
+            onClick={e => { e.stopPropagation(); next(); }}
+            aria-label="Next image"
+            style={{
+              position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+              width: 44, height: 44, borderRadius: '50%',
+              background: 'rgba(255,255,255,0.1)',
+              border: '1px solid rgba(255,255,255,0.2)',
+              color: '#fff', fontSize: 22, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >›</button>
+        </>
+      )}
+
+      {/* Dot indicators */}
+      {total > 1 && (
+        <div style={{ display: 'flex', gap: 6, marginTop: 14 }} onClick={e => e.stopPropagation()}>
+          {images.map((_, i) => (
+            <div
+              key={i}
+              onClick={() => setIdx(i)}
+              style={{
+                width: i === idx ? 18 : 8, height: 8, borderRadius: 999,
+                background: i === idx ? C.primary : 'rgba(255,255,255,0.3)',
+                cursor: 'pointer', transition: 'all 0.3s ease',
+              }}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Carousel ───────────────────────────────────────────────────
 const CARD_W  = 220;
 const CARD_H  = 300;
 const SPREAD  = 110;
@@ -37,11 +202,12 @@ const DIM_F   = 0.28;
 const VISIBLE = 2;
 
 function DepthCarousel({
-  images, activeIdx, onSelect,
+  images, activeIdx, onSelect, onOpenLightbox,
 }: {
   images: { src: string; alt: string }[];
   activeIdx: number;
   onSelect: (i: number) => void;
+  onOpenLightbox: (i: number) => void;
 }) {
   const total = images.length;
   const prev = () => onSelect((activeIdx - 1 + total) % total);
@@ -62,24 +228,42 @@ function DepthCarousel({
           const opacity    = 1 - absStep * DIM_F;
           const scale      = 1 - absStep * 0.06;
           const zIndex     = VISIBLE + 1 - absStep;
+          const isActive   = step === 0;
           return (
-            <div key={i} onClick={() => step !== 0 && onSelect(i)}
+            <div
+              key={i}
+              onClick={() => isActive ? onOpenLightbox(i) : onSelect(i)}
               style={{
                 position: 'absolute', top: 30, left: '50%',
                 width: CARD_W, height: CARD_H, marginLeft: -CARD_W / 2,
                 borderRadius: 16, overflow: 'hidden',
-                boxShadow: step === 0
+                boxShadow: isActive
                   ? `0 16px 48px rgba(196,154,155,0.45)`
                   : '0 8px 24px rgba(0,0,0,0.15)',
                 transform: `translateX(${translateX}px) translateZ(${translateZ}px) rotateY(${rotateY}deg) scale(${scale})`,
                 filter: blur > 0 ? `blur(${blur}px)` : 'none',
                 opacity, zIndex,
                 transition: 'all 0.6s cubic-bezier(0.25,0.46,0.45,0.94)',
-                cursor: step !== 0 ? 'pointer' : 'default',
-              }}>
+                cursor: 'pointer',
+              }}
+            >
               <Image src={img.src} alt={img.alt} fill className="object-cover object-top" sizes={`${CARD_W}px`} draggable={false} />
               {absStep > 0 && (
                 <div style={{ position: 'absolute', inset: 0, background: `rgba(90,45,46,${absStep * 0.18})`, borderRadius: 16 }} />
+              )}
+              {/* Zoom hint on active card */}
+              {isActive && (
+                <div style={{
+                  position: 'absolute', bottom: 10, right: 10,
+                  background: 'rgba(255,255,255,0.25)',
+                  borderRadius: '50%', width: 28, height: 28,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  backdropFilter: 'blur(4px)',
+                }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
+                    <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" stroke="white" strokeWidth="2" strokeLinecap="round" fill="none"/>
+                  </svg>
+                </div>
               )}
             </div>
           );
@@ -113,14 +297,22 @@ const HEARTS = [
 ];
 
 const F: React.CSSProperties = { fontFamily: 'var(--font-poppins), sans-serif' };
+const SERIF: React.CSSProperties = { fontFamily: 'var(--font-playfair), Georgia, serif' };
+
+// All lightbox-able images: couple photo + gallery
+const COUPLE_PHOTO = { src: '/images/1.jpg', alt: 'Von Nak & Barn Ravan' };
+const ALL_LIGHTBOX = [COUPLE_PHOTO, ...GALLERY_IMAGES];
+const COUPLE_IDX   = 0;
+const GALLERY_OFFSET = 1; // gallery starts at index 1 in ALL_LIGHTBOX
 
 export default function Invitation({ guestName }: { guestName?: string }) {
-  const [isLoaded, setIsLoaded]           = useState(false);
+  const [isLoaded, setIsLoaded]         = useState(false);
   const [buttonPressed, setButtonPressed] = useState(false);
-  const [isOpened, setIsOpened]           = useState(false);
-  const [galleryIdx, setGalleryIdx]       = useState(0);
-  const [isPlaying, setIsPlaying]         = useState(false);
-  const audioRef                          = useRef<HTMLAudioElement | null>(null);
+  const [isOpened, setIsOpened]         = useState(false);
+  const [galleryIdx, setGalleryIdx]     = useState(0);
+  const [isPlaying, setIsPlaying]       = useState(false);
+  const [lightboxIdx, setLightboxIdx]   = useState<number | null>(null);
+  const audioRef                        = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => { setIsLoaded(true); }, []);
 
@@ -160,6 +352,15 @@ export default function Invitation({ guestName }: { guestName?: string }) {
   return (
     <div className="relative" style={{ background: C.bg, minHeight: '100vh', ...F, overflowX: 'hidden' }}>
 
+      {/* ── LIGHTBOX ── */}
+      {lightboxIdx !== null && (
+        <Lightbox
+          images={ALL_LIGHTBOX}
+          startIndex={lightboxIdx}
+          onClose={() => setLightboxIdx(null)}
+        />
+      )}
+
       {/* ── LANDING BACKGROUND ── */}
       {!isOpened && (
         <>
@@ -183,7 +384,6 @@ export default function Invitation({ guestName }: { guestName?: string }) {
         <main className="flex items-center justify-center min-h-screen px-4 relative z-10">
           <div className={`flex flex-col items-center gap-4 transition-all duration-700 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
             style={{ width: '100%', maxWidth: 560 }}>
-
 
             {/* Card */}
             <div className="relative w-full"
@@ -209,9 +409,9 @@ export default function Invitation({ guestName }: { guestName?: string }) {
 
               {/* Couple names */}
               <div className="text-center" style={{ lineHeight: 1.15 }}>
-                <p className="text-4xl md:text-5xl" style={{ color: C.primaryDeep, fontWeight: 300 }}>Von Nak</p>
-                <p className="text-2xl my-1" style={{ color: C.primaryDark, fontWeight: 300 }}>&amp;</p>
-                <p className="text-4xl md:text-5xl" style={{ color: C.primaryDeep, fontWeight: 300 }}>Barn Ravan</p>
+                <p className="text-4xl md:text-5xl" style={{ color: C.primaryDeep, fontWeight: 400, ...SERIF }}>Von Nak</p>
+                <p className="text-2xl my-1" style={{ color: C.primaryDark, fontWeight: 400, ...SERIF }}>&amp;</p>
+                <p className="text-4xl md:text-5xl" style={{ color: C.primaryDeep, fontWeight: 400, ...SERIF }}>Barn Ravan</p>
               </div>
 
               {/* Divider */}
@@ -225,7 +425,7 @@ export default function Invitation({ guestName }: { guestName?: string }) {
               <p className="text-center text-sm mt-2" style={{ color: C.textLabel, letterSpacing: '0.08em' }}>Cordially Invites</p>
 
               {guestName && (
-                <p className="text-center mt-1" style={{ color: C.primaryDeep, fontSize: 25, fontWeight: 600, fontFamily: 'var(--font-khmer), var(--font-poppins), sans-serif' }}>
+                <p className="text-center mt-1" style={{ color: C.primaryDeep, fontSize: 25, fontWeight: 600, fontFamily: 'var(--font-khmer), var(--font-playfair), var(--font-poppins), sans-serif' }}>
                   {guestName}
                 </p>
               )}
@@ -250,43 +450,64 @@ export default function Invitation({ guestName }: { guestName?: string }) {
             <section className="pb-4 px-4" style={{ paddingTop: '22%', overflowX: 'clip', overflowY: 'visible' }}>
               <div className="relative w-full" style={{ overflow: 'visible' }}>
                 <Image src="/images/envelope-background1.png" alt="Envelope" width={1013} height={1168} className="w-full h-auto" priority />
+
+                {/* Clickable couple photo */}
                 <div className="absolute" style={{ top: '-10%', left: '28%', width: '64%', zIndex: 10, transform: 'rotate(5deg)', transformOrigin: 'bottom center' }}>
-                  <div className="bg-white shadow-2xl" style={{ padding: '8px 8px 26px' }}>
+                  <div
+                    className="bg-white shadow-2xl"
+                    style={{ padding: '8px 8px 26px', cursor: 'pointer', position: 'relative' }}
+                    onClick={() => setLightboxIdx(COUPLE_IDX)}
+                    role="button"
+                    aria-label="View full photo"
+                  >
                     <div className="relative w-full overflow-hidden" style={{ aspectRatio: '3/4' }}>
-                      <Image src="/images/couple-photo.jpeg" alt="Von Nak & Barn Ravan" fill className="object-cover" style={{ objectPosition: 'center 20px' }} sizes="300px" />
+                      <Image src="/images/1.jpg" alt="Von Nak & Barn Ravan" fill className="object-cover" style={{ objectPosition: 'center 20px' }} sizes="300px" />
+                    </div>
+                    {/* Zoom hint */}
+                    <div style={{
+                      position: 'absolute', bottom: 34, right: 16,
+                      background: 'rgba(255,255,255,0.3)',
+                      borderRadius: '50%', width: 28, height: 28,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      backdropFilter: 'blur(4px)',
+                    }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                        <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" stroke={C.primaryDeep} strokeWidth="2" strokeLinecap="round"/>
+                      </svg>
                     </div>
                   </div>
                 </div>
+
                 <div className="absolute pointer-events-none" style={{ top: '5%', left: '-5%', width: '54%', height: '72%', zIndex: 15 }}>
                   <Image src="/images/download-removebg-preview.png" alt="" fill className="object-contain object-bottom" />
                 </div>
                 <div className="absolute pointer-events-none" style={{ bottom: 0, left: 0, right: 0, height: '57.2%', zIndex: 20 }}>
                   <Image src="/images/envelope-cover1.png" alt="" fill className="object-fill" />
                 </div>
-                <div className="absolute left-1/2 -translate-x-1/2 rounded-full flex items-center justify-center"
-                  style={{ bottom: '54%', width: 58, height: 58, zIndex: 30, background: 'radial-gradient(circle at 35% 35%,#ffe066,#c8960c)', border: '3px solid #b8860b', boxShadow: '0 4px 16px rgba(180,130,0,0.5)' }}>
-                  <span style={{ fontSize: 22, filter: 'drop-shadow(0 1px 2px #7a5800)' }}>♡</span>
-                </div>
               </div>
             </section>
 
             {/* 2. NAMES */}
             <section className="py-8 px-4 text-center">
-              <p className="text-4xl" style={{ color: C.primaryDeep, fontWeight: 300, fontStyle: 'italic' }}>Von Nak</p>
-              <p className="text-xl my-1" style={{ color: C.primaryDark }}>❧</p>
-              <p className="text-4xl" style={{ color: C.primaryDeep, fontWeight: 300, fontStyle: 'italic' }}>Barn Ravan</p>
+              <p className="text-4xl md:text-5xl" style={{ color: C.primaryDeep, fontWeight: 400, ...SERIF }}>Von Nak</p>
+              <p className="text-2xl my-1" style={{ color: C.primaryDark, fontWeight: 400, ...SERIF }}>&amp;</p>
+              <p className="text-4xl md:text-5xl" style={{ color: C.primaryDeep, fontWeight: 400, ...SERIF }}>Barn Ravan</p>
             </section>
 
             {/* 3. GALLERY */}
             <section className="pb-8">
-              <p style={{ ...sectionLabel, paddingLeft: 16, paddingRight: 16 }}>Photo Gallery</p>
-              <DepthCarousel images={GALLERY_IMAGES} activeIdx={galleryIdx} onSelect={setGalleryIdx} />
+              <p style={{ ...sectionLabel, paddingLeft: 16, paddingRight: 16, marginBottom: 0 }}>Photo Gallery</p>
+              <DepthCarousel
+                images={GALLERY_IMAGES}
+                activeIdx={galleryIdx}
+                onSelect={setGalleryIdx}
+                onOpenLightbox={(i) => setLightboxIdx(GALLERY_OFFSET + i)}
+              />
             </section>
 
             {/* 4. ENGAGEMENT INFO */}
             <section className="px-4 pb-6">
               <div style={darkCard} className="relative">
-
                 <div className="absolute pointer-events-none" style={{ top: -24, right: -16, width: 120, height: 150, zIndex: 2 }}>
                   <Image src={FLOWER} alt="" fill className="object-contain" style={{ transform: 'scaleX(-1)' }} />
                 </div>
@@ -294,14 +515,12 @@ export default function Invitation({ guestName }: { guestName?: string }) {
                 <p style={{ ...sectionLabel, color: 'rgba(255,255,255,0.85)', marginBottom: 24 }}>Engagement Ceremony</p>
 
                 <div className="flex items-stretch" style={{ position: 'relative', zIndex: 3, marginBottom: 20 }}>
-                  {/* Left — big date */}
                   <div className="flex flex-col items-center justify-center"
                     style={{ minWidth: 88, borderRight: '1px solid rgba(255,255,255,0.2)', paddingRight: 20 }}>
                     <p style={{ fontSize: 68, fontWeight: 700, color: '#fff', lineHeight: 1, letterSpacing: '-2px' }}>04</p>
                     <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.75)', letterSpacing: '0.2em', marginTop: 4 }}>OCT</p>
                     <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)' }}>2026</p>
                   </div>
-                  {/* Right — details */}
                   <div className="flex flex-col justify-center gap-3" style={{ paddingLeft: 20, flex: 1 }}>
                     <div>
                       <p style={{ fontSize: 9, letterSpacing: '0.25em', color: 'rgba(255,255,255,0.65)', textTransform: 'uppercase', marginBottom: 2 }}>Day</p>
@@ -310,19 +529,17 @@ export default function Invitation({ guestName }: { guestName?: string }) {
                     <div style={{ height: 1, background: 'rgba(255,255,255,0.15)' }} />
                     <div>
                       <p style={{ fontSize: 9, letterSpacing: '0.25em', color: 'rgba(255,255,255,0.65)', textTransform: 'uppercase', marginBottom: 2 }}>Time</p>
-                      <p style={{ fontSize: 14, color: '#fff', fontWeight: 500 }}>08:00 PM</p>
+                      <p style={{ fontSize: 14, color: '#fff', fontWeight: 500 }}>08:00 AM</p>
                     </div>
                     <div style={{ height: 1, background: 'rgba(255,255,255,0.15)' }} />
                     <div>
                       <p style={{ fontSize: 9, letterSpacing: '0.25em', color: 'rgba(255,255,255,0.65)', textTransform: 'uppercase', marginBottom: 2 }}>Location</p>
                       <p style={{ fontSize: 13, color: '#fff', fontWeight: 500 }}>Pou Khpuos</p>
-                      <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)' }}>Prey Veng Province,
-Cambodia</p>
+                      <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)' }}>Prey Veng Province, Cambodia</p>
                     </div>
                   </div>
                 </div>
 
-                {/* Gold ornament divider */}
                 <div className="flex items-center gap-3" style={{ position: 'relative', zIndex: 3, marginBottom: 20 }}>
                   <div style={{ flex: 1, height: 1, background: 'linear-gradient(to right, transparent, rgba(200,150,12,0.6))' }} />
                   <span style={{ color: C.gold, fontSize: 18 }}>❦</span>
@@ -335,7 +552,6 @@ Cambodia</p>
             <section className="px-4 pb-8">
               <p style={sectionLabel}>Venue</p>
               <div style={{ background: '#fff', borderRadius: 14, overflow: 'hidden', boxShadow: `0 4px 24px rgba(160,112,112,0.15)` }}>
-
                 <div style={{ position: 'relative', width: '100%', height: 160, background: '#f0e8e8' }}>
                   <iframe
                     title="Venue Map"
@@ -344,11 +560,7 @@ Cambodia</p>
                     style={{ border: 0, display: 'block' }}
                     allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade"
                   />
-                  <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -100%)', pointerEvents: 'none', zIndex: 5 }}>
-                    <div style={{ width: 28, height: 28, background: C.primaryDeep, borderRadius: '50% 50% 50% 0', transform: 'rotate(-45deg)', boxShadow: `0 2px 8px rgba(160,112,112,0.5)` }} />
-                  </div>
                 </div>
-
                 <div style={{ padding: '16px 20px 20px' }}>
                   <div className="flex items-start gap-3">
                     <div className="flex-shrink-0 mt-1">
@@ -366,7 +578,6 @@ Cambodia</p>
                       </p>
                     </div>
                   </div>
-
                   <a
                     href="https://maps.app.goo.gl/Gemrs5JCroNRGCU27"
                     target="_blank" rel="noopener noreferrer"
@@ -434,6 +645,14 @@ Cambodia</p>
         @keyframes musicPulse {
           0%   { transform: scale(1);   opacity: 1; }
           100% { transform: scale(2.4); opacity: 0; }
+        }
+        @keyframes lbFadeIn {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+        @keyframes lbImgIn {
+          from { opacity: 0; transform: scale(0.96); }
+          to   { opacity: 1; transform: scale(1); }
         }
       `}</style>
     </div>
