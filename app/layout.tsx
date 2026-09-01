@@ -27,6 +27,13 @@ const playfair = Playfair_Display({
 export const metadata: Metadata = {
   title: "Nak & Ravan - Wedding Invitation",
   description: "Elegant wedding invitation with minimalism blue theme",
+  openGraph: {
+    title: "Nak & Ravan - Wedding Invitation",
+    description: "Elegant wedding invitation with minimalism blue theme",
+    url: "https://vonnak-barnravan.vercel.app",
+    siteName: "Von Nak & Barn Ravan Wedding",
+    type: "website",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
