@@ -1,5 +1,4 @@
 import { notFound } from 'next/navigation';
-import type { Metadata } from 'next';
 import Invitation from '../components/Invitation';
 import guests from '../../data/guests.json';
 
@@ -12,22 +11,6 @@ interface Props {
 
 export async function generateStaticParams() {
   return Object.keys(guestMap).map((slug) => ({ name: slug }));
-}
-
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { name } = await params;
-  const slug = name.toLowerCase();
-  const guestName = guestMap[slug];
-
-  if (!guestName) {
-    return {
-      title: "Nak & Ravan - Wedding Invitation",
-    };
-  }
-
-  return {
-    title: `${guestName} - Wedding Invitation`,
-  };
 }
 
 export default async function GuestPage({ params }: Props) {
